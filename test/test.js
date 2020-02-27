@@ -273,44 +273,6 @@ test.cb('ignore DOCTYPE', t => {
     assert(t, lexer, xml, expected);
 });
 
-test.cb('debug mode prints stuff', t => {
-    const lexer = Lexer.create({debug: true});
-    const xml = `<test>text</test>`;
-    const logs = [];
-    const savedConsoleLog = console.log;
-    console.log = (...args) => logs.push(args);
-    const expected = [
-        {type: Type.openTag, value: 'test'},
-        {type: Type.text, value: 'text'},
-        {type: Type.closeTag, value: 'test'},
-    ];
-    assert(t, lexer, xml, expected);
-    console.log = savedConsoleLog;
-    const expectedLogs = [
-        ['state-data', '<'],
-        ['state-tag-begin', 't'],
-        ['state-tag-name', 'e'],
-        ['state-tag-name', 's'],
-        ['state-tag-name', 't'],
-        ['state-tag-name', '>'],
-        ['emit:', {type: 'open-tag', value: 'test'}],
-        ['state-data', 't'],
-        ['state-data', 'e'],
-        ['state-data', 'x'],
-        ['state-data', 't'],
-        ['state-data', '<'],
-        ['emit:', {type: 'text', value: 'text'}],
-        ['state-tag-begin', '/'],
-        ['state-tag-begin', 't'],
-        ['state-tag-name', 'e'],
-        ['state-tag-name', 's'],
-        ['state-tag-name', 't'],
-        ['state-tag-name', '>'],
-        ['emit:', {type: 'close-tag', value: 'test'}],
-    ];
-    t.deepEqual(logs, expectedLogs);
-});
-
 test.cb('issue #6', t => {
     const xml =
         `<document>x
