@@ -34,8 +34,8 @@ Action = {
 
 Type = {
   text:                   'text'
-  openTag:                'open-tag'
-  closeTag:               'close-tag'
+  openTag:                'open'
+  closeTag:               'close'
   attributeName:          'attribute-name'
   attributeValue:         'attribute-value'
   }
@@ -54,9 +54,6 @@ charToAction = {
   }
 
 #-----------------------------------------------------------------------------------------------------------
-action_from_chr = ( chr ) => charToAction[ chr ] ? Action.chr
-
-#-----------------------------------------------------------------------------------------------------------
 create = ( settings, handler ) ->
   switch arity = arguments.length
     when 0 then null
@@ -66,7 +63,7 @@ create = ( settings, handler ) ->
   [ settings, handler, ] = [ handler, null, ] unless isa.function handler
   ### TAINT validate.xmllexer_settings settings ? {} ###
   ### TAINT validate.function handler ###
-  settings          = { { debug: false, }..., settings..., }
+  settings          = { { include_specials: false, }..., settings..., }
   lexer             = new EventEmitter()
   state             = State.data
   data              = ''
@@ -76,51 +73,60 @@ create = ( settings, handler ) ->
   isClosing         = false
   openingQuote      = ''
 
+  #-----------------------------------------------------------------------------------------------------------
+  action_from_chr = ( chr ) => charToAction[ chr ] ? Action.chr
+
   #---------------------------------------------------------------------------------------------------------
-  step = ( chr ) =>
+  step = ( src, idx, chr ) =>
     if settings.debug then console.log state, chr
     actions = lexer.stateMachine[ state ]
     action  = actions[ action_from_chr chr ] ? actions[ Action.error ] ? actions[ Action.chr ]
-    action chr
+    action src, idx, chr
     return null
 
   #---------------------------------------------------------------------------------------------------------
-  lexer.write = ( str ) =>
-    len = str.length
-    for i in [ 0 ... len ]
-      step str[ i ]
+  lexer.write = ( src ) =>
+    for idx in [ 0 ... src.length ]
+      step src, idx, src[ idx ]
     return null
 
   #---------------------------------------------------------------------------------------------------------
-  emit = ( type, value ) =>
-    # tags like: '?xml', '!DOCTYPE', comments
-    if ( first_chr = tagName[ 0 ] ) in '?!'
-      return null
-    event = { type, value }
-    console.log 'emit:', event if settings.debug
-    if handler? then  handler event
-    else              lexer.emit 'data', event
+  lexer.flush = =>
+
+  #---------------------------------------------------------------------------------------------------------
+  emit = ( ref, type, value ) =>
+    # sigil = null
+    # # tags like: '?xml', '!DOCTYPE', comments
+    unless settings.include_specials
+      return null if tagName[ 0 ] in '!?'
+    # switch sigil = tagName[ 0 ]
+    #   when '?' then type = ''
+    #   when '!' then type = 'declaration'
+    # event.sigil = sigil if sigil?
+    event = { ref, type, value }
+    if handler? then  handler { ref, type, value, }
+    else              lexer.emit 'data', { type, value, }
 
   ```
   lexer.stateMachine = {
     [State.data]: {
-      [Action.lt]: () => {
+      [Action.lt]: ( src, idx, chr ) => {
         if (data.trim()) {
-          emit(Type.text, data);
+          emit( '^1^', Type.text, data);
         }
         tagName = '';
         isClosing = false;
         state = State.tagBegin;
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         data += chr;
       },
     },
     [State.cdata]: {
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         data += chr;
         if (data.substr(-3) === ']]>') {
-          emit(Type.text, data.slice(0, -3));
+          emit( '^2^', Type.text, data.slice(0, -3));
           data = '';
           state = State.data;
         }
@@ -128,38 +134,38 @@ create = ( settings, handler ) ->
     },
     [State.tagBegin]: {
       [Action.space]: noop,
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         tagName = chr;
         state = State.tagName;
       },
-      [Action.slash]: () => {
+      [Action.slash]: ( src, idx, chr ) => {
         tagName = '';
         isClosing = true;
       },
     },
     [State.tagName]: {
-      [Action.space]: () => {
+      [Action.space]: ( src, idx, chr ) => {
         if (isClosing) {
           state = State.tagEnd;
         } else {
           state = State.attributeNameStart;
-          emit(Type.openTag, tagName);
+          emit( '^3^', Type.openTag, tagName);
         }
       },
-      [Action.gt]: () => {
+      [Action.gt]: ( src, idx, chr ) => {
         if (isClosing) {
-          emit(Type.closeTag, tagName);
+          emit( '^4^', Type.closeTag, tagName);
         } else {
-          emit(Type.openTag, tagName);
+          emit( '^5^', Type.openTag, tagName);
         }
         data = '';
         state = State.data;
       },
-      [Action.slash]: () => {
+      [Action.slash]: ( src, idx, chr ) => {
         state = State.tagEnd;
-        emit(Type.openTag, tagName);
+        emit( '^6^', Type.openTag, tagName);
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         tagName += chr;
         if (tagName === '![CDATA[') {
           state = State.cdata;
@@ -169,130 +175,130 @@ create = ( settings, handler ) ->
       },
     },
     [State.tagEnd]: {
-      [Action.gt]: () => {
-        emit(Type.closeTag, tagName);
+      [Action.gt]: ( src, idx, chr ) => {
+        emit( '^7^', Type.closeTag, tagName);
         data = '';
         state = State.data;
       },
       [Action.chr]: noop,
     },
     [State.attributeNameStart]: {
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         attrName = chr;
         state = State.attributeName;
       },
-      [Action.gt]: () => {
+      [Action.gt]: ( src, idx, chr ) => {
         data = '';
         state = State.data;
       },
       [Action.space]: noop,
-      [Action.slash]: () => {
+      [Action.slash]: ( src, idx, chr ) => {
         isClosing = true;
         state = State.tagEnd;
       },
     },
     [State.attributeName]: {
-      [Action.space]: () => {
+      [Action.space]: ( src, idx, chr ) => {
         state = State.attributeNameEnd;
       },
-      [Action.equal]: () => {
-        emit(Type.attributeName, attrName);
+      [Action.equal]: ( src, idx, chr ) => {
+        emit( '^8^', Type.attributeName, attrName);
         state = State.attributeValueBegin;
       },
-      [Action.gt]: () => {
+      [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit(Type.attributeName, attrName);
-        emit(Type.attributeValue, attrValue);
+        emit( '^9^', Type.attributeName, attrName);
+        emit( '^10^', Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
-      [Action.slash]: () => {
+      [Action.slash]: ( src, idx, chr ) => {
         isClosing = true;
         attrValue = '';
-        emit(Type.attributeName, attrName);
-        emit(Type.attributeValue, attrValue);
+        emit( '^11^', Type.attributeName, attrName);
+        emit( '^12^', Type.attributeValue, attrValue);
         state = State.tagEnd;
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         attrName += chr;
       },
     },
     [State.attributeNameEnd]: {
       [Action.space]: noop,
-      [Action.equal]: () => {
-        emit(Type.attributeName, attrName);
+      [Action.equal]: ( src, idx, chr ) => {
+        emit( '^13^', Type.attributeName, attrName);
         state = State.attributeValueBegin;
       },
-      [Action.gt]: () => {
+      [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit(Type.attributeName, attrName);
-        emit(Type.attributeValue, attrValue);
+        emit( '^14^', Type.attributeName, attrName);
+        emit( '^15^', Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         attrValue = '';
-        emit(Type.attributeName, attrName);
-        emit(Type.attributeValue, attrValue);
+        emit( '^16^', Type.attributeName, attrName);
+        emit( '^17^', Type.attributeValue, attrValue);
         attrName = chr;
         state = State.attributeName;
       },
     },
     [State.attributeValueBegin]: {
       [Action.space]: noop,
-      [Action.quote]: (chr) => {
+      [Action.quote]: ( src, idx, chr ) => {
         openingQuote = chr;
         attrValue = '';
         state = State.attributeValue;
       },
-      [Action.gt]: () => {
+      [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit(Type.attributeValue, attrValue);
+        emit( '^18^', Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         openingQuote = '';
         attrValue = chr;
         state = State.attributeValue;
       },
     },
     [State.attributeValue]: {
-      [Action.space]: (chr) => {
+      [Action.space]: ( src, idx, chr ) => {
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit(Type.attributeValue, attrValue);
+          emit( '^19^', Type.attributeValue, attrValue);
           state = State.attributeNameStart;
         }
       },
-      [Action.quote]: (chr) => {
+      [Action.quote]: ( src, idx, chr ) => {
         if (openingQuote === chr) {
-          emit(Type.attributeValue, attrValue);
+          emit( '^20^', Type.attributeValue, attrValue);
           state = State.attributeNameStart;
         } else {
           attrValue += chr;
         }
       },
-      [Action.gt]: (chr) => {
+      [Action.gt]: ( src, idx, chr ) => {
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit(Type.attributeValue, attrValue);
+          emit( '^21^', Type.attributeValue, attrValue);
           data = '';
           state = State.data;
         }
       },
-      [Action.slash]: (chr) => {
+      [Action.slash]: ( src, idx, chr ) => {
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit(Type.attributeValue, attrValue);
+          emit( '^22^', Type.attributeValue, attrValue);
           isClosing = true;
           state = State.tagEnd;
         }
       },
-      [Action.chr]: (chr) => {
+      [Action.chr]: ( src, idx, chr ) => {
         attrValue += chr;
       },
     },
