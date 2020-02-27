@@ -69,7 +69,7 @@ var create = function create(options) {
     var tagName = '';
     var attrName = '';
     var attrValue = '';
-    var isClosing = '';
+    var isClosing = false;
     var openingQuote = '';
 
     var emit = function emit(type, value) {

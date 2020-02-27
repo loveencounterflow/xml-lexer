@@ -22,7 +22,11 @@
   ],
   "author": "Pedro Ladaria <pedro.ladaria@gmail.com>",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "ava": "^3.4.0",
+    "eventemitter3": "^4.0.0",
+    "intertype": "^3.1.2"
+  },
   "devDependencies": {},
   "directories": {
     "test": "test"

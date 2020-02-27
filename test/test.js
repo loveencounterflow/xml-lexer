@@ -1,6 +1,6 @@
 'use strict';
 const test = require('ava');
-const Lexer = require('../src/lexer.js');
+const Lexer = require('../lib/main.js');
 const Type = Lexer.Type;
 
 const assert = (t, lexer, xml, expected) => {
