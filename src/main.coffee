@@ -6,8 +6,6 @@ EventEmitter = require('eventemitter3')
   validate
   type_of }               = ( new ( require 'intertype' ).Intertype() ).export()
 
-noop = ->
-
 State = {
   data:                   'state-data'
   cdata:                  'state-cdata'
@@ -38,6 +36,7 @@ Type = {
   closeTag:               'close'
   attributeName:          'attribute-name'
   attributeValue:         'attribute-value'
+  noop:                   'noop'
   }
 
 charToAction = {
@@ -94,17 +93,18 @@ create = ( settings, handler ) ->
   lexer.flush = =>
 
   #---------------------------------------------------------------------------------------------------------
-  emit = ( ref, type, value ) =>
+  emit = ( ref, src, idx, type, value ) =>
     # sigil = null
     # # tags like: '?xml', '!DOCTYPE', comments
     unless settings.include_specials
       return null if tagName[ 0 ] in '!?'
+      return null if type is Type.noop
     # switch sigil = tagName[ 0 ]
     #   when '?' then type = ''
     #   when '!' then type = 'declaration'
     # event.sigil = sigil if sigil?
     event = { ref, type, value }
-    if handler? then  handler { ref, type, value, }
+    if handler? then  handler { ref, idx, type, value, }
     else              lexer.emit 'data', { type, value, }
 
   ```
@@ -112,7 +112,7 @@ create = ( settings, handler ) ->
     [State.data]: {
       [Action.lt]: ( src, idx, chr ) => {
         if (data.trim()) {
-          emit( '^1^', Type.text, data);
+          emit( '^1^', src, idx, Type.text, data);
         }
         tagName = '';
         isClosing = false;
@@ -126,14 +126,14 @@ create = ( settings, handler ) ->
       [Action.chr]: ( src, idx, chr ) => {
         data += chr;
         if (data.substr(-3) === ']]>') {
-          emit( '^2^', Type.text, data.slice(0, -3));
+          emit( '^2^', src, idx, Type.text, data.slice(0, -3));
           data = '';
           state = State.data;
         }
       },
     },
     [State.tagBegin]: {
-      [Action.space]: noop,
+      [Action.space]: ( src, idx, chr ) => { emit( '^3^', src, idx, Type.noop, chr ); },
       [Action.chr]: ( src, idx, chr ) => {
         tagName = chr;
         state = State.tagName;
@@ -149,21 +149,21 @@ create = ( settings, handler ) ->
           state = State.tagEnd;
         } else {
           state = State.attributeNameStart;
-          emit( '^3^', Type.openTag, tagName);
+          emit( '^4^', src, idx, Type.openTag, tagName);
         }
       },
       [Action.gt]: ( src, idx, chr ) => {
         if (isClosing) {
-          emit( '^4^', Type.closeTag, tagName);
+          emit( '^5^', src, idx, Type.closeTag, tagName);
         } else {
-          emit( '^5^', Type.openTag, tagName);
+          emit( '^6^', src, idx, Type.openTag, tagName);
         }
         data = '';
         state = State.data;
       },
       [Action.slash]: ( src, idx, chr ) => {
         state = State.tagEnd;
-        emit( '^6^', Type.openTag, tagName);
+        emit( '^7^', src, idx, Type.openTag, tagName);
       },
       [Action.chr]: ( src, idx, chr ) => {
         tagName += chr;
@@ -176,11 +176,11 @@ create = ( settings, handler ) ->
     },
     [State.tagEnd]: {
       [Action.gt]: ( src, idx, chr ) => {
-        emit( '^7^', Type.closeTag, tagName);
+        emit( '^8^', src, idx, Type.closeTag, tagName);
         data = '';
         state = State.data;
       },
-      [Action.chr]: noop,
+      [Action.chr]: ( src, idx, chr ) => { emit( '^9^', src, idx, Type.noop, chr ); },
     },
     [State.attributeNameStart]: {
       [Action.chr]: ( src, idx, chr ) => {
@@ -191,7 +191,7 @@ create = ( settings, handler ) ->
         data = '';
         state = State.data;
       },
-      [Action.space]: noop,
+      [Action.space]: ( src, idx, chr ) => { emit( '^10^', src, idx, Type.noop, chr ); },
       [Action.slash]: ( src, idx, chr ) => {
         isClosing = true;
         state = State.tagEnd;
@@ -202,21 +202,21 @@ create = ( settings, handler ) ->
         state = State.attributeNameEnd;
       },
       [Action.equal]: ( src, idx, chr ) => {
-        emit( '^8^', Type.attributeName, attrName);
+        emit( '^11^', src, idx, Type.attributeName, attrName);
         state = State.attributeValueBegin;
       },
       [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit( '^9^', Type.attributeName, attrName);
-        emit( '^10^', Type.attributeValue, attrValue);
+        emit( '^12^', src, idx, Type.attributeName, attrName);
+        emit( '^13^', src, idx, Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
       [Action.slash]: ( src, idx, chr ) => {
         isClosing = true;
         attrValue = '';
-        emit( '^11^', Type.attributeName, attrName);
-        emit( '^12^', Type.attributeValue, attrValue);
+        emit( '^14^', src, idx, Type.attributeName, attrName);
+        emit( '^15^', src, idx, Type.attributeValue, attrValue);
         state = State.tagEnd;
       },
       [Action.chr]: ( src, idx, chr ) => {
@@ -224,28 +224,28 @@ create = ( settings, handler ) ->
       },
     },
     [State.attributeNameEnd]: {
-      [Action.space]: noop,
+      [Action.space]: ( src, idx, chr ) => { emit( '^16^', src, idx, Type.noop, chr ); },
       [Action.equal]: ( src, idx, chr ) => {
-        emit( '^13^', Type.attributeName, attrName);
+        emit( '^17^', src, idx, Type.attributeName, attrName);
         state = State.attributeValueBegin;
       },
       [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit( '^14^', Type.attributeName, attrName);
-        emit( '^15^', Type.attributeValue, attrValue);
+        emit( '^18^', src, idx, Type.attributeName, attrName);
+        emit( '^19^', src, idx, Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
       [Action.chr]: ( src, idx, chr ) => {
         attrValue = '';
-        emit( '^16^', Type.attributeName, attrName);
-        emit( '^17^', Type.attributeValue, attrValue);
+        emit( '^20^', src, idx, Type.attributeName, attrName);
+        emit( '^21^', src, idx, Type.attributeValue, attrValue);
         attrName = chr;
         state = State.attributeName;
       },
     },
     [State.attributeValueBegin]: {
-      [Action.space]: noop,
+      [Action.space]: ( src, idx, chr ) => { emit( '^22^', src, idx, Type.noop, chr ); },
       [Action.quote]: ( src, idx, chr ) => {
         openingQuote = chr;
         attrValue = '';
@@ -253,7 +253,7 @@ create = ( settings, handler ) ->
       },
       [Action.gt]: ( src, idx, chr ) => {
         attrValue = '';
-        emit( '^18^', Type.attributeValue, attrValue);
+        emit( '^23^', src, idx, Type.attributeValue, attrValue);
         data = '';
         state = State.data;
       },
@@ -268,13 +268,13 @@ create = ( settings, handler ) ->
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit( '^19^', Type.attributeValue, attrValue);
+          emit( '^24^', src, idx, Type.attributeValue, attrValue);
           state = State.attributeNameStart;
         }
       },
       [Action.quote]: ( src, idx, chr ) => {
         if (openingQuote === chr) {
-          emit( '^20^', Type.attributeValue, attrValue);
+          emit( '^25^', src, idx, Type.attributeValue, attrValue);
           state = State.attributeNameStart;
         } else {
           attrValue += chr;
@@ -284,7 +284,7 @@ create = ( settings, handler ) ->
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit( '^21^', Type.attributeValue, attrValue);
+          emit( '^26^', src, idx, Type.attributeValue, attrValue);
           data = '';
           state = State.data;
         }
@@ -293,7 +293,7 @@ create = ( settings, handler ) ->
         if (openingQuote) {
           attrValue += chr;
         } else {
-          emit( '^22^', Type.attributeValue, attrValue);
+          emit( '^27^', src, idx, Type.attributeValue, attrValue);
           isClosing = true;
           state = State.tagEnd;
         }
