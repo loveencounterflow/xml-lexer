@@ -107,205 +107,207 @@ create = ( settings, handler ) ->
     if handler? then  handler { ref, idx, type, value, }
     else              lexer.emit 'data', { type, value, }
 
-  ```
-  lexer.stateMachine = {
-    [State.data]: {
-      [Action.lt]: ( src, idx, chr ) => {
-        if (data.trim()) {
-          emit( '^1^', src, idx, Type.text, data);
-        }
-        tagName = '';
-        isClosing = false;
-        state = State.tagBegin;
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        data += chr;
-      },
-    },
-    [State.cdata]: {
-      [Action.chr]: ( src, idx, chr ) => {
-        data += chr;
-        if (data.substr(-3) === ']]>') {
-          emit( '^2^', src, idx, Type.text, data.slice(0, -3));
-          data = '';
-          state = State.data;
-        }
-      },
-    },
-    [State.tagBegin]: {
-      [Action.space]: ( src, idx, chr ) => { emit( '^3^', src, idx, Type.noop, chr ); },
-      [Action.chr]: ( src, idx, chr ) => {
-        tagName = chr;
-        state = State.tagName;
-      },
-      [Action.slash]: ( src, idx, chr ) => {
-        tagName = '';
-        isClosing = true;
-      },
-    },
-    [State.tagName]: {
-      [Action.space]: ( src, idx, chr ) => {
-        if (isClosing) {
-          state = State.tagEnd;
-        } else {
-          state = State.attributeNameStart;
-          emit( '^4^', src, idx, Type.openTag, tagName);
-        }
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        if (isClosing) {
-          emit( '^5^', src, idx, Type.closeTag, tagName);
-        } else {
-          emit( '^6^', src, idx, Type.openTag, tagName);
-        }
-        data = '';
-        state = State.data;
-      },
-      [Action.slash]: ( src, idx, chr ) => {
-        state = State.tagEnd;
-        emit( '^7^', src, idx, Type.openTag, tagName);
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        tagName += chr;
-        if (tagName === '![CDATA[') {
-          state = State.cdata;
-          data = '';
-          tagName = '';
-        }
-      },
-    },
-    [State.tagEnd]: {
-      [Action.gt]: ( src, idx, chr ) => {
-        emit( '^8^', src, idx, Type.closeTag, tagName);
-        data = '';
-        state = State.data;
-      },
-      [Action.chr]: ( src, idx, chr ) => { emit( '^9^', src, idx, Type.noop, chr ); },
-    },
-    [State.attributeNameStart]: {
-      [Action.chr]: ( src, idx, chr ) => {
-        attrName = chr;
-        state = State.attributeName;
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        data = '';
-        state = State.data;
-      },
-      [Action.space]: ( src, idx, chr ) => { emit( '^10^', src, idx, Type.noop, chr ); },
-      [Action.slash]: ( src, idx, chr ) => {
-        isClosing = true;
-        state = State.tagEnd;
-      },
-    },
-    [State.attributeName]: {
-      [Action.space]: ( src, idx, chr ) => {
-        state = State.attributeNameEnd;
-      },
-      [Action.equal]: ( src, idx, chr ) => {
-        emit( '^11^', src, idx, Type.attributeName, attrName);
-        state = State.attributeValueBegin;
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        attrValue = '';
-        emit( '^12^', src, idx, Type.attributeName, attrName);
-        emit( '^13^', src, idx, Type.attributeValue, attrValue);
-        data = '';
-        state = State.data;
-      },
-      [Action.slash]: ( src, idx, chr ) => {
-        isClosing = true;
-        attrValue = '';
-        emit( '^14^', src, idx, Type.attributeName, attrName);
-        emit( '^15^', src, idx, Type.attributeValue, attrValue);
-        state = State.tagEnd;
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        attrName += chr;
-      },
-    },
-    [State.attributeNameEnd]: {
-      [Action.space]: ( src, idx, chr ) => { emit( '^16^', src, idx, Type.noop, chr ); },
-      [Action.equal]: ( src, idx, chr ) => {
-        emit( '^17^', src, idx, Type.attributeName, attrName);
-        state = State.attributeValueBegin;
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        attrValue = '';
-        emit( '^18^', src, idx, Type.attributeName, attrName);
-        emit( '^19^', src, idx, Type.attributeValue, attrValue);
-        data = '';
-        state = State.data;
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        attrValue = '';
-        emit( '^20^', src, idx, Type.attributeName, attrName);
-        emit( '^21^', src, idx, Type.attributeValue, attrValue);
-        attrName = chr;
-        state = State.attributeName;
-      },
-    },
-    [State.attributeValueBegin]: {
-      [Action.space]: ( src, idx, chr ) => { emit( '^22^', src, idx, Type.noop, chr ); },
-      [Action.quote]: ( src, idx, chr ) => {
-        openingQuote = chr;
-        attrValue = '';
-        state = State.attributeValue;
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        attrValue = '';
-        emit( '^23^', src, idx, Type.attributeValue, attrValue);
-        data = '';
-        state = State.data;
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        openingQuote = '';
-        attrValue = chr;
-        state = State.attributeValue;
-      },
-    },
-    [State.attributeValue]: {
-      [Action.space]: ( src, idx, chr ) => {
-        if (openingQuote) {
-          attrValue += chr;
-        } else {
-          emit( '^24^', src, idx, Type.attributeValue, attrValue);
-          state = State.attributeNameStart;
-        }
-      },
-      [Action.quote]: ( src, idx, chr ) => {
-        if (openingQuote === chr) {
-          emit( '^25^', src, idx, Type.attributeValue, attrValue);
-          state = State.attributeNameStart;
-        } else {
-          attrValue += chr;
-        }
-      },
-      [Action.gt]: ( src, idx, chr ) => {
-        if (openingQuote) {
-          attrValue += chr;
-        } else {
-          emit( '^26^', src, idx, Type.attributeValue, attrValue);
-          data = '';
-          state = State.data;
-        }
-      },
-      [Action.slash]: ( src, idx, chr ) => {
-        if (openingQuote) {
-          attrValue += chr;
-        } else {
-          emit( '^27^', src, idx, Type.attributeValue, attrValue);
-          isClosing = true;
-          state = State.tagEnd;
-        }
-      },
-      [Action.chr]: ( src, idx, chr ) => {
-        attrValue += chr;
-      },
-    },
-  };
+  lexer.stateMachine =
 
+    #-------------------------------------------------------------------------------------------------------
+    [State.data]:
+      #.....................................................................................................
+      [Action.lt]: ( src, idx, chr ) =>
+        if data.trim().length > 0
+          emit '^1^', src, idx, Type.text, data
+        tagName = ''
+        isClosing = false
+        state = State.tagBegin
+      #.....................................................................................................
+      [Action.chr]: ( ( src, idx, chr ) => data += chr )
 
-  ```
+    #-------------------------------------------------------------------------------------------------------
+    [State.cdata]:
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        data += chr
+        if ( ( data.substr -3 ) is ']]>' )
+          emit '^2^', src, idx, Type.text, data.slice 0, -3
+          data  = ''
+          state = State.data
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.tagBegin]:
+      #.....................................................................................................
+      [Action.space]: ( ( src, idx, chr ) => emit '^3^', src, idx, Type.noop, chr )
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        tagName = chr
+        state   = State.tagName
+      #.....................................................................................................
+      [Action.slash]: ( src, idx, chr ) =>
+        tagName   = ''
+        isClosing = true
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.tagName]:
+      #.....................................................................................................
+      [Action.space]: ( src, idx, chr ) =>
+        if isClosing
+          state = State.tagEnd
+        else
+          state = State.attributeNameStart
+          emit '^4^', src, idx, Type.openTag, tagName
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        if isClosing
+          emit '^5^', src, idx, Type.closeTag, tagName
+        else
+          emit '^6^', src, idx, Type.openTag, tagName
+        data  = '';
+        state = State.data;
+      #.....................................................................................................
+      [Action.slash]: ( src, idx, chr ) =>
+        state = State.tagEnd
+        emit '^7^', src, idx, Type.openTag, tagName
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        tagName += chr
+        if tagName is '![CDATA['
+          state   = State.cdata
+          data    = ''
+          tagName = ''
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.tagEnd]:
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        emit '^8^', src, idx, Type.closeTag, tagName
+        data  = ''
+        state = State.data
+      #.....................................................................................................
+      [Action.chr]: ( ( src, idx, chr ) => emit '^9^', src, idx, Type.noop, chr )
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.attributeNameStart]:
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        attrName  = chr
+        state     = State.attributeName
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        data = ''
+        state = State.data
+      #.....................................................................................................
+      [Action.space]: ( ( src, idx, chr ) => emit '^10^', src, idx, Type.noop, chr )
+      #.....................................................................................................
+      [Action.slash]: ( src, idx, chr ) =>
+        isClosing = true
+        state     = State.tagEnd
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.attributeName]:
+      #.....................................................................................................
+      [Action.space]: ( src, idx, chr ) =>
+        state = State.attributeNameEnd
+      #.....................................................................................................
+      [Action.equal]: ( src, idx, chr ) =>
+        emit '^11^', src, idx, Type.attributeName, attrName
+        state = State.attributeValueBegin
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        attrValue = ''
+        emit '^12^', src, idx, Type.attributeName, attrName
+        emit '^13^', src, idx, Type.attributeValue, attrValue
+        data      = ''
+        state     = State.data
+      #.....................................................................................................
+      [Action.slash]: ( src, idx, chr ) =>
+        isClosing = true
+        attrValue = ''
+        emit '^14^', src, idx, Type.attributeName, attrName
+        emit '^15^', src, idx, Type.attributeValue, attrValue
+        state = State.tagEnd
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        attrName += chr
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.attributeNameEnd]:
+      #.....................................................................................................
+      [Action.space]: ( ( src, idx, chr ) => emit '^16^', src, idx, Type.noop, chr )
+      #.....................................................................................................
+      [Action.equal]: ( src, idx, chr ) =>
+        emit '^17^', src, idx, Type.attributeName, attrName
+        state = State.attributeValueBegin
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        attrValue = ''
+        emit '^18^', src, idx, Type.attributeName, attrName
+        emit '^19^', src, idx, Type.attributeValue, attrValue
+        data      = ''
+        state     = State.data
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        attrValue = ''
+        emit '^20^', src, idx, Type.attributeName, attrName
+        emit '^21^', src, idx, Type.attributeValue, attrValue
+        attrName  = chr
+        state     = State.attributeName
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.attributeValueBegin]:
+      #.....................................................................................................
+      [Action.space]: ( ( src, idx, chr ) => emit '^22^', src, idx, Type.noop, chr )
+      #.....................................................................................................
+      [Action.quote]: ( src, idx, chr ) =>
+        openingQuote  = chr
+        attrValue     = ''
+        state         = State.attributeValue
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        attrValue     = ''
+        emit '^23^', src, idx, Type.attributeValue, attrValue
+        data          = ''
+        state         = State.data
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        openingQuote  = ''
+        attrValue     = chr
+        state         = State.attributeValue
+
+    #-------------------------------------------------------------------------------------------------------
+    [State.attributeValue]:
+      #.....................................................................................................
+      [Action.space]: ( src, idx, chr ) =>
+        if openingQuote
+          attrValue += chr
+        else
+          emit '^24^', src, idx, Type.attributeValue, attrValue
+          state = State.attributeNameStart
+      #.....................................................................................................
+      [Action.quote]: ( src, idx, chr ) =>
+        if openingQuote is chr
+          emit '^25^', src, idx, Type.attributeValue, attrValue
+          state = State.attributeNameStart
+        else
+          attrValue += chr
+      #.....................................................................................................
+      [Action.gt]: ( src, idx, chr ) =>
+        if openingQuote
+          attrValue += chr
+        else
+          emit '^26^', src, idx, Type.attributeValue, attrValue
+          data  = ''
+          state = State.data
+      #.....................................................................................................
+      [Action.slash]: ( src, idx, chr ) =>
+        if openingQuote
+          attrValue += chr
+        else
+          emit '^27^', src, idx, Type.attributeValue, attrValue
+          isClosing = true
+          state     = State.tagEnd
+      #.....................................................................................................
+      [Action.chr]: ( src, idx, chr ) =>
+        attrValue += chr
+
+  #---------------------------------------------------------------------------------------------------------
   return lexer
 
 
