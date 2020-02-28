@@ -12,11 +12,11 @@ State =
   tagBegin:               'state-tag-begin'
   tag_name:               'state-tag-name'
   tagEnd:                 'state-tag-end'
-  atr_name_start:     'state-atr-name-start'
-  atr_name:          'state-atr-name'
-  atr_name_end:       'state-atr-name-end'
-  atr_value_begin:    'state-atr-value-begin'
-  atr_value:         'state-atr-value'
+  atr_name_start:         'state-atr-name-start'
+  atr_name:               'state-atr-name'
+  atr_name_end:           'state-atr-name-end'
+  atr_value_begin:        'state-atr-value-begin'
+  atr_value:              'state-atr-value'
 
 Action =
   lt:                     'action-lt'
@@ -32,8 +32,8 @@ Type =
   text:                   'text'
   openTag:                'open'
   closeTag:               'close'
-  atr_name:          'atr-name'
-  atr_value:         'atr-value'
+  atr_name:               'atr-name'
+  atr_value:              'atr-value'
   noop:                   'noop'
 
 actions_by_chrs =
@@ -60,12 +60,12 @@ create = ( settings, handler ) ->
   ### TAINT validate.function handler ###
   settings          = { { include_specials: false, }..., settings..., }
   lexer             = new EventEmitter()
-  state             = State.data
 
   #---------------------------------------------------------------------------------------------------------
   # Registers
   #---------------------------------------------------------------------------------------------------------
   ρ =
+    state:          State.data
     data:           ''
     tag_name:       ''
     attr_name:      ''
@@ -75,8 +75,8 @@ create = ( settings, handler ) ->
 
   #---------------------------------------------------------------------------------------------------------
   step = ( src, idx, chr ) =>
-    if settings.debug then console.log state, chr
-    actions = lexer.stateMachine[ state ]
+    if settings.debug then console.log ρ.state, chr
+    actions = lexer.stateMachine[ ρ.state ]
     action  = actions[ actions_by_chrs[ chr ] ? Action.chr ] ? actions[ Action.error ] ? actions[ Action.chr ]
     action src, idx, chr
     return null
@@ -105,7 +105,7 @@ create = ( settings, handler ) ->
     registers = {}
     for k, v of ρ
       registers[ k ] = v unless v in [ undefined, '', false, ]
-    if handler? then  handler { type, value, ref, idx, ρ: registers, }
+    if handler? then  handler { type, value, idx, ρ: registers, ref, }
     else              lexer.emit 'data', { type, value, }
 
   lexer.stateMachine =
@@ -116,9 +116,9 @@ create = ( settings, handler ) ->
       [Action.lt]: ( src, idx, chr ) =>
         if ρ.data.trim().length > 0
           emit '^1^', src, idx, Type.text, ρ.data
-        ρ.tag_name   = ''
-        ρ.is_closing = false
-        state     = State.tagBegin
+        ρ.tag_name    = ''
+        ρ.is_closing  = false
+        ρ.state       = State.tagBegin
       #.....................................................................................................
       [Action.chr]: ( ( src, idx, chr ) => ρ.data += chr )
 
@@ -130,7 +130,7 @@ create = ( settings, handler ) ->
         if ( ( ρ.data.substr -3 ) is ']]>' )
           emit '^2^', src, idx, Type.text, ρ.data.slice 0, -3
           ρ.data  = ''
-          state = State.data
+          ρ.state = State.data
 
     #-------------------------------------------------------------------------------------------------------
     [State.tagBegin]:
@@ -139,7 +139,7 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.tag_name = chr
-        state   = State.tag_name
+        ρ.state   = State.tag_name
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
         ρ.tag_name   = ''
@@ -150,9 +150,9 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       [Action.space]: ( src, idx, chr ) =>
         if ρ.is_closing
-          state = State.tagEnd
+          ρ.state = State.tagEnd
         else
-          state = State.atr_name_start
+          ρ.state = State.atr_name_start
           emit '^4^', src, idx, Type.openTag, ρ.tag_name
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
@@ -161,16 +161,16 @@ create = ( settings, handler ) ->
         else
           emit '^6^', src, idx, Type.openTag, ρ.tag_name
         ρ.data  = '';
-        state = State.data;
+        ρ.state = State.data;
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
-        state = State.tagEnd
+        ρ.state = State.tagEnd
         emit '^7^', src, idx, Type.openTag, ρ.tag_name
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.tag_name += chr
         if ρ.tag_name is '![CDATA['
-          state   = State.cdata
+          ρ.state   = State.cdata
           ρ.data    = ''
           ρ.tag_name = ''
 
@@ -180,7 +180,7 @@ create = ( settings, handler ) ->
       [Action.gt]: ( src, idx, chr ) =>
         emit '^8^', src, idx, Type.closeTag, ρ.tag_name
         ρ.data  = ''
-        state = State.data
+        ρ.state = State.data
       #.....................................................................................................
       [Action.chr]: ( ( src, idx, chr ) => emit '^9^', src, idx, Type.noop, chr )
 
@@ -189,41 +189,41 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.attr_name  = chr
-        state     = State.atr_name
+        ρ.state     = State.atr_name
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.data = ''
-        state = State.data
+        ρ.state = State.data
       #.....................................................................................................
       [Action.space]: ( ( src, idx, chr ) => emit '^10^', src, idx, Type.noop, chr )
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
         ρ.is_closing = true
-        state     = State.tagEnd
+        ρ.state     = State.tagEnd
 
     #-------------------------------------------------------------------------------------------------------
     [State.atr_name]:
       #.....................................................................................................
       [Action.space]: ( src, idx, chr ) =>
-        state = State.atr_name_end
+        ρ.state = State.atr_name_end
       #.....................................................................................................
       [Action.equal]: ( src, idx, chr ) =>
         emit '^11^', src, idx, Type.atr_name, ρ.attr_name
-        state = State.atr_value_begin
+        ρ.state = State.atr_value_begin
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value = ''
         emit '^12^', src, idx, Type.atr_name, ρ.attr_name
         emit '^13^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data      = ''
-        state     = State.data
+        ρ.state     = State.data
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
         ρ.is_closing = true
         ρ.atr_value = ''
         emit '^14^', src, idx, Type.atr_name, ρ.attr_name
         emit '^15^', src, idx, Type.atr_value, ρ.atr_value
-        state = State.tagEnd
+        ρ.state = State.tagEnd
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.attr_name += chr
@@ -235,21 +235,21 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       [Action.equal]: ( src, idx, chr ) =>
         emit '^17^', src, idx, Type.atr_name, ρ.attr_name
-        state = State.atr_value_begin
+        ρ.state = State.atr_value_begin
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value = ''
         emit '^18^', src, idx, Type.atr_name, ρ.attr_name
         emit '^19^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data      = ''
-        state     = State.data
+        ρ.state     = State.data
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.atr_value = ''
         emit '^20^', src, idx, Type.atr_name, ρ.attr_name
         emit '^21^', src, idx, Type.atr_value, ρ.atr_value
         ρ.attr_name  = chr
-        state     = State.atr_name
+        ρ.state     = State.atr_name
 
     #-------------------------------------------------------------------------------------------------------
     [State.atr_value_begin]:
@@ -259,18 +259,18 @@ create = ( settings, handler ) ->
       [Action.quote]: ( src, idx, chr ) =>
         ρ.prv_quote  = chr
         ρ.atr_value     = ''
-        state         = State.atr_value
+        ρ.state         = State.atr_value
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value     = ''
         emit '^23^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data          = ''
-        state         = State.data
+        ρ.state         = State.data
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.prv_quote  = ''
         ρ.atr_value     = chr
-        state         = State.atr_value
+        ρ.state         = State.atr_value
 
     #-------------------------------------------------------------------------------------------------------
     [State.atr_value]:
@@ -280,12 +280,12 @@ create = ( settings, handler ) ->
           ρ.atr_value += chr
         else
           emit '^24^', src, idx, Type.atr_value, ρ.atr_value
-          state = State.atr_name_start
+          ρ.state = State.atr_name_start
       #.....................................................................................................
       [Action.quote]: ( src, idx, chr ) =>
         if chr is ρ.prv_quote
           emit '^25^', src, idx, Type.atr_value, ρ.atr_value
-          state = State.atr_name_start
+          ρ.state = State.atr_name_start
         else
           ρ.atr_value += chr
       #.....................................................................................................
@@ -295,7 +295,7 @@ create = ( settings, handler ) ->
         else
           emit '^26^', src, idx, Type.atr_value, ρ.atr_value
           ρ.data  = ''
-          state = State.data
+          ρ.state = State.data
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
         if ρ.prv_quote.length > 0
@@ -303,7 +303,7 @@ create = ( settings, handler ) ->
         else
           emit '^27^', src, idx, Type.atr_value, ρ.atr_value
           ρ.is_closing = true
-          state     = State.tagEnd
+          ρ.state     = State.tagEnd
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.atr_value += chr
