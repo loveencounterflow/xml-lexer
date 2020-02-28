@@ -43,8 +43,8 @@ test.cb('single attribute without quotes', t => {
     const xml = `<test a=1></test>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '1'},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '1'},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -55,8 +55,8 @@ test.cb('spaces around', t => {
     const xml = `<  test  foo  =  "bar baz"  >text< / test >`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'foo'},
-        {type: Type.attributeValue, value: 'bar baz'},
+        {type: Type.atr_name, value: 'foo'},
+        {type: Type.atr_value, value: 'bar baz'},
         {type: Type.text, value: 'text'},
         {type: Type.closeTag, value: 'test'},
     ];
@@ -68,8 +68,8 @@ test.cb('slash breaking attribute', t => {
     const xml = `<test foo/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'foo'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'foo'},
+        {type: Type.atr_value, value: ''},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -80,8 +80,8 @@ test.cb('tag closing before attribute value', t => {
     const xml = `<test foo ></test>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'foo'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'foo'},
+        {type: Type.atr_value, value: ''},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -92,8 +92,8 @@ test.cb('tag closing before attribute value (with equal)', t => {
     const xml = `<test foo=></test>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'foo'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'foo'},
+        {type: Type.atr_value, value: ''},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -104,14 +104,14 @@ test.cb('various attributes (single, double, no quotes, no value)', t => {
     const xml = `<test a=0 b='1' c="2" d></test>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '0'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: '1'},
-        {type: Type.attributeName, value: 'c'},
-        {type: Type.attributeValue, value: '2'},
-        {type: Type.attributeName, value: 'd'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '0'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: '1'},
+        {type: Type.atr_name, value: 'c'},
+        {type: Type.atr_value, value: '2'},
+        {type: Type.atr_name, value: 'd'},
+        {type: Type.atr_value, value: ''},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -122,12 +122,12 @@ test.cb('various attributes without spaces', t => {
     const xml = `<test a='1'b="2"c></test>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '1'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: '2'},
-        {type: Type.attributeName, value: 'c'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '1'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: '2'},
+        {type: Type.atr_name, value: 'c'},
+        {type: Type.atr_value, value: ''},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -148,8 +148,8 @@ test.cb('self closing tag with slash after attribute value', t => {
     const xml = `<test a=1/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '1'},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '1'},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -160,10 +160,10 @@ test.cb('slashes in attribute values', t => {
     const xml = `<test a='/'b="/"/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '/'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: '/'},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '/'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: '/'},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -174,10 +174,10 @@ test.cb('quotes inside quotes', t => {
     const xml = `<test a='"'b="'"/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '"'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: "'"},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '"'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: "'"},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -188,10 +188,10 @@ test.cb('gt in attribute values', t => {
     const xml = `<test a='>'b=">"/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '>'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: '>'},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '>'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: '>'},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -202,10 +202,10 @@ test.cb('lt in attribute values', t => {
     const xml = `<test a='<'b="<"/>`;
     const expected = [
         {type: Type.openTag, value: 'test'},
-        {type: Type.attributeName, value: 'a'},
-        {type: Type.attributeValue, value: '<'},
-        {type: Type.attributeName, value: 'b'},
-        {type: Type.attributeValue, value: '<'},
+        {type: Type.atr_name, value: 'a'},
+        {type: Type.atr_value, value: '<'},
+        {type: Type.atr_name, value: 'b'},
+        {type: Type.atr_value, value: '<'},
         {type: Type.closeTag, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
@@ -283,8 +283,8 @@ test.cb('issue #6', t => {
         {type: Type.openTag, value: 'document'},
         {type: Type.text, value: 'x\n            '},
         {type: Type.openTag, value: 'title'},
-        {type: Type.attributeName, value: 'attr'},
-        {type: Type.attributeValue, value: ''},
+        {type: Type.atr_name, value: 'attr'},
+        {type: Type.atr_value, value: ''},
         {type: Type.text, value: 'Test'},
         {type: Type.closeTag, value: 'title'},
         {type: Type.closeTag, value: 'document'},

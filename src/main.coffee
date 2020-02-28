@@ -12,11 +12,11 @@ State =
   tagBegin:               'state-tag-begin'
   tag_name:               'state-tag-name'
   tagEnd:                 'state-tag-end'
-  attributeNameStart:     'state-attribute-name-start'
-  attributeName:          'state-attribute-name'
-  attributeNameEnd:       'state-attribute-name-end'
-  attributeValueBegin:    'state-attribute-value-begin'
-  attributeValue:         'state-attribute-value'
+  atr_name_start:     'state-atr-name-start'
+  atr_name:          'state-atr-name'
+  atr_name_end:       'state-atr-name-end'
+  atr_value_begin:    'state-atr-value-begin'
+  atr_value:         'state-atr-value'
 
 Action =
   lt:                     'action-lt'
@@ -32,8 +32,8 @@ Type =
   text:                   'text'
   openTag:                'open'
   closeTag:               'close'
-  attributeName:          'attribute-name'
-  attributeValue:         'attribute-value'
+  atr_name:          'atr-name'
+  atr_value:         'atr-value'
   noop:                   'noop'
 
 actions_by_chrs =
@@ -102,7 +102,10 @@ create = ( settings, handler ) ->
     #   when '!' then type = 'declaration'
     # event.sigil = sigil if sigil?
     event = { ref, type, value }
-    if handler? then  handler { ref, idx, type, value, }
+    registers = {}
+    for k, v of ρ
+      registers[ k ] = v unless v in [ undefined, '', false, ]
+    if handler? then  handler { type, value, ref, idx, ρ: registers, }
     else              lexer.emit 'data', { type, value, }
 
   lexer.stateMachine =
@@ -149,7 +152,7 @@ create = ( settings, handler ) ->
         if ρ.is_closing
           state = State.tagEnd
         else
-          state = State.attributeNameStart
+          state = State.atr_name_start
           emit '^4^', src, idx, Type.openTag, ρ.tag_name
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
@@ -182,11 +185,11 @@ create = ( settings, handler ) ->
       [Action.chr]: ( ( src, idx, chr ) => emit '^9^', src, idx, Type.noop, chr )
 
     #-------------------------------------------------------------------------------------------------------
-    [State.attributeNameStart]:
+    [State.atr_name_start]:
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.attr_name  = chr
-        state     = State.attributeName
+        state     = State.atr_name
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.data = ''
@@ -199,90 +202,90 @@ create = ( settings, handler ) ->
         state     = State.tagEnd
 
     #-------------------------------------------------------------------------------------------------------
-    [State.attributeName]:
+    [State.atr_name]:
       #.....................................................................................................
       [Action.space]: ( src, idx, chr ) =>
-        state = State.attributeNameEnd
+        state = State.atr_name_end
       #.....................................................................................................
       [Action.equal]: ( src, idx, chr ) =>
-        emit '^11^', src, idx, Type.attributeName, ρ.attr_name
-        state = State.attributeValueBegin
+        emit '^11^', src, idx, Type.atr_name, ρ.attr_name
+        state = State.atr_value_begin
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value = ''
-        emit '^12^', src, idx, Type.attributeName, ρ.attr_name
-        emit '^13^', src, idx, Type.attributeValue, ρ.atr_value
+        emit '^12^', src, idx, Type.atr_name, ρ.attr_name
+        emit '^13^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data      = ''
         state     = State.data
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
         ρ.is_closing = true
         ρ.atr_value = ''
-        emit '^14^', src, idx, Type.attributeName, ρ.attr_name
-        emit '^15^', src, idx, Type.attributeValue, ρ.atr_value
+        emit '^14^', src, idx, Type.atr_name, ρ.attr_name
+        emit '^15^', src, idx, Type.atr_value, ρ.atr_value
         state = State.tagEnd
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.attr_name += chr
 
     #-------------------------------------------------------------------------------------------------------
-    [State.attributeNameEnd]:
+    [State.atr_name_end]:
       #.....................................................................................................
       [Action.space]: ( ( src, idx, chr ) => emit '^16^', src, idx, Type.noop, chr )
       #.....................................................................................................
       [Action.equal]: ( src, idx, chr ) =>
-        emit '^17^', src, idx, Type.attributeName, ρ.attr_name
-        state = State.attributeValueBegin
+        emit '^17^', src, idx, Type.atr_name, ρ.attr_name
+        state = State.atr_value_begin
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value = ''
-        emit '^18^', src, idx, Type.attributeName, ρ.attr_name
-        emit '^19^', src, idx, Type.attributeValue, ρ.atr_value
+        emit '^18^', src, idx, Type.atr_name, ρ.attr_name
+        emit '^19^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data      = ''
         state     = State.data
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.atr_value = ''
-        emit '^20^', src, idx, Type.attributeName, ρ.attr_name
-        emit '^21^', src, idx, Type.attributeValue, ρ.atr_value
+        emit '^20^', src, idx, Type.atr_name, ρ.attr_name
+        emit '^21^', src, idx, Type.atr_value, ρ.atr_value
         ρ.attr_name  = chr
-        state     = State.attributeName
+        state     = State.atr_name
 
     #-------------------------------------------------------------------------------------------------------
-    [State.attributeValueBegin]:
+    [State.atr_value_begin]:
       #.....................................................................................................
       [Action.space]: ( ( src, idx, chr ) => emit '^22^', src, idx, Type.noop, chr )
       #.....................................................................................................
       [Action.quote]: ( src, idx, chr ) =>
         ρ.prv_quote  = chr
         ρ.atr_value     = ''
-        state         = State.attributeValue
+        state         = State.atr_value
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
         ρ.atr_value     = ''
-        emit '^23^', src, idx, Type.attributeValue, ρ.atr_value
+        emit '^23^', src, idx, Type.atr_value, ρ.atr_value
         ρ.data          = ''
         state         = State.data
       #.....................................................................................................
       [Action.chr]: ( src, idx, chr ) =>
         ρ.prv_quote  = ''
         ρ.atr_value     = chr
-        state         = State.attributeValue
+        state         = State.atr_value
 
     #-------------------------------------------------------------------------------------------------------
-    [State.attributeValue]:
+    [State.atr_value]:
       #.....................................................................................................
       [Action.space]: ( src, idx, chr ) =>
         if ρ.prv_quote.length > 0
           ρ.atr_value += chr
         else
-          emit '^24^', src, idx, Type.attributeValue, ρ.atr_value
-          state = State.attributeNameStart
+          emit '^24^', src, idx, Type.atr_value, ρ.atr_value
+          state = State.atr_name_start
       #.....................................................................................................
       [Action.quote]: ( src, idx, chr ) =>
         if chr is ρ.prv_quote
-          emit '^25^', src, idx, Type.attributeValue, ρ.atr_value
-          state = State.attributeNameStart
+          emit '^25^', src, idx, Type.atr_value, ρ.atr_value
+          state = State.atr_name_start
         else
           ρ.atr_value += chr
       #.....................................................................................................
@@ -290,7 +293,7 @@ create = ( settings, handler ) ->
         if ρ.prv_quote.length > 0
           ρ.atr_value += chr
         else
-          emit '^26^', src, idx, Type.attributeValue, ρ.atr_value
+          emit '^26^', src, idx, Type.atr_value, ρ.atr_value
           ρ.data  = ''
           state = State.data
       #.....................................................................................................
@@ -298,7 +301,7 @@ create = ( settings, handler ) ->
         if ρ.prv_quote.length > 0
           ρ.atr_value += chr
         else
-          emit '^27^', src, idx, Type.attributeValue, ρ.atr_value
+          emit '^27^', src, idx, Type.atr_value, ρ.atr_value
           ρ.is_closing = true
           state     = State.tagEnd
       #.....................................................................................................
