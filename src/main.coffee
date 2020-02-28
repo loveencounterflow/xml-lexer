@@ -6,7 +6,7 @@ EventEmitter = require('eventemitter3')
   validate
   type_of }               = ( new ( require 'intertype' ).Intertype() ).export()
 
-State = {
+State =
   data:                   'state-data'
   cdata:                  'state-cdata'
   tagBegin:               'state-tag-begin'
@@ -17,9 +17,8 @@ State = {
   attributeNameEnd:       'state-attribute-name-end'
   attributeValueBegin:    'state-attribute-value-begin'
   attributeValue:         'state-attribute-value'
-  }
 
-Action = {
+Action =
   lt:                     'action-lt'
   gt:                     'action-gt'
   space:                  'action-space'
@@ -28,18 +27,16 @@ Action = {
   slash:                  'action-slash'
   chr:                    'action-chr'
   error:                  'action-error'
-  }
 
-Type = {
+Type =
   text:                   'text'
   openTag:                'open'
   closeTag:               'close'
   attributeName:          'attribute-name'
   attributeValue:         'attribute-value'
   noop:                   'noop'
-  }
 
-charToAction = {
+actions_by_chrs =
   ' ':                    Action.space
   '\t':                   Action.space
   '\n':                   Action.space
@@ -50,7 +47,6 @@ charToAction = {
   "'":                    Action.quote
   '=':                    Action.equal
   '/':                    Action.slash
-  }
 
 #-----------------------------------------------------------------------------------------------------------
 create = ( settings, handler ) ->
@@ -72,14 +68,11 @@ create = ( settings, handler ) ->
   isClosing         = false
   openingQuote      = ''
 
-  #-----------------------------------------------------------------------------------------------------------
-  action_from_chr = ( chr ) => charToAction[ chr ] ? Action.chr
-
   #---------------------------------------------------------------------------------------------------------
   step = ( src, idx, chr ) =>
     if settings.debug then console.log state, chr
     actions = lexer.stateMachine[ state ]
-    action  = actions[ action_from_chr chr ] ? actions[ Action.error ] ? actions[ Action.chr ]
+    action  = actions[ actions_by_chrs[ chr ] ? Action.chr ] ? actions[ Action.error ] ? actions[ Action.chr ]
     action src, idx, chr
     return null
 
