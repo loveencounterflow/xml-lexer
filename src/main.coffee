@@ -275,21 +275,21 @@ create = ( settings, handler ) ->
     [State.attributeValue]:
       #.....................................................................................................
       [Action.space]: ( src, idx, chr ) =>
-        if openingQuote
+        if openingQuote.length > 0
           attrValue += chr
         else
           emit '^24^', src, idx, Type.attributeValue, attrValue
           state = State.attributeNameStart
       #.....................................................................................................
       [Action.quote]: ( src, idx, chr ) =>
-        if openingQuote is chr
+        if chr is openingQuote
           emit '^25^', src, idx, Type.attributeValue, attrValue
           state = State.attributeNameStart
         else
           attrValue += chr
       #.....................................................................................................
       [Action.gt]: ( src, idx, chr ) =>
-        if openingQuote
+        if openingQuote.length > 0
           attrValue += chr
         else
           emit '^26^', src, idx, Type.attributeValue, attrValue
@@ -297,7 +297,7 @@ create = ( settings, handler ) ->
           state = State.data
       #.....................................................................................................
       [Action.slash]: ( src, idx, chr ) =>
-        if openingQuote
+        if openingQuote.length > 0
           attrValue += chr
         else
           emit '^27^', src, idx, Type.attributeValue, attrValue
