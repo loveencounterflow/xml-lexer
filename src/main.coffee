@@ -6,47 +6,42 @@ EventEmitter = require('eventemitter3')
   validate
   type_of }               = ( new ( require 'intertype' ).Intertype() ).export()
 
-State =
-  data:                   'state-data'
-  cdata:                  'state-cdata'
-  tagBegin:               'state-tag-begin'
-  tag_name:               'state-tag-name'
-  tagEnd:                 'state-tag-end'
-  atr_name_start:         'state-atr-name-start'
-  atr_name:               'state-atr-name'
-  atr_name_end:           'state-atr-name-end'
-  atr_value_begin:        'state-atr-value-begin'
-  atr_value:              'state-atr-value'
-
-Action =
-  lt:                     'action-lt'
-  gt:                     'action-gt'
-  space:                  'action-space'
-  equal:                  'action-equal'
-  quote:                  'action-quote'
-  slash:                  'action-slash'
-  chr:                    'action-chr'
-  error:                  'action-error'
-
-Type =
-  text:                   'text'
-  openTag:                'open'
-  closeTag:               'close'
-  atr_name:               'atr-name'
-  atr_value:              'atr-value'
-  noop:                   'noop'
+state_data              = 'state_data'
+state_cdata             = 'state_cdata'
+state_tag_begin         = 'state_tag_begin'
+state_tagname           = 'state_tagname'
+state_tag_end           = 'state_tag_end'
+state_atrname_start     = 'state_atrname_start'
+state_atrname           = 'state_atrname'
+state_atrname_end       = 'state_atrname_end'
+state_atrvalue_begin    = 'state_atrvalue_begin'
+state_atrvalue          = 'state_atrvalue'
+action_lt               = 'action_lt'
+action_gt               = 'action_gt'
+action_space            = 'action_space'
+action_equal            = 'action_equal'
+action_quote            = 'action_quote'
+action_slash            = 'action_slash'
+action_chr              = 'action_chr'
+action_error            = 'action_error'
+type_text               = 'text'
+type_open               = 'open'
+type_close              = 'close'
+type_atrname            = 'atrname'
+type_atrvalue           = 'atrvalue'
+type_noop               = 'noop'
 
 actions_by_chrs =
-  ' ':                    Action.space
-  '\t':                   Action.space
-  '\n':                   Action.space
-  '\r':                   Action.space
-  '<':                    Action.lt
-  '>':                    Action.gt
-  '"':                    Action.quote
-  "'":                    Action.quote
-  '=':                    Action.equal
-  '/':                    Action.slash
+  ' ':                    action_space
+  '\t':                   action_space
+  '\n':                   action_space
+  '\r':                   action_space
+  '<':                    action_lt
+  '>':                    action_gt
+  '"':                    action_quote
+  "'":                    action_quote
+  '=':                    action_equal
+  '/':                    action_slash
 
 #-----------------------------------------------------------------------------------------------------------
 create = ( settings, handler ) ->
@@ -65,11 +60,11 @@ create = ( settings, handler ) ->
   # Registers
   #---------------------------------------------------------------------------------------------------------
   ρ =
-    state:          State.data
-    data:           ''
-    tag_name:       ''
-    attr_name:      ''
-    atr_value:      ''
+    state:         state_data
+    data:          ''
+    tagname:       ''
+    atrname:       ''
+    atrvalue:      ''
     is_closing:     false
     prv_quote:      ''
 
@@ -77,7 +72,7 @@ create = ( settings, handler ) ->
   step = ( src, idx, chr ) =>
     if settings.debug then console.log ρ.state, chr
     actions = lexer.stateMachine[ ρ.state ]
-    action  = actions[ actions_by_chrs[ chr ] ? Action.chr ] ? actions[ Action.error ] ? actions[ Action.chr ]
+    action  = actions[ actions_by_chrs[ chr ] ? action_chr ] ? actions[ action_error ] ? actions[ action_chr ]
     action src, idx, chr
     return null
 
@@ -95,9 +90,9 @@ create = ( settings, handler ) ->
     # sigil = null
     # # tags like: '?xml', '!DOCTYPE', comments
     unless settings.include_specials
-      return null if ρ.tag_name[ 0 ] in '!?'
-      return null if type is Type.noop
-    # switch sigil = ρ.tag_name[ 0 ]
+      return null if ρ.tagname[ 0 ] in '!?'
+      return null if type is type_noop
+    # switch sigil = ρ.tagname[ 0 ]
     #   when '?' then type = ''
     #   when '!' then type = 'declaration'
     # event.sigil = sigil if sigil?
@@ -105,214 +100,243 @@ create = ( settings, handler ) ->
     registers = {}
     for k, v of ρ
       registers[ k ] = v unless v in [ undefined, '', false, ]
-    if handler? then  handler { type, value, idx, ρ: registers, ref, }
-    else              lexer.emit 'data', { type, value, }
+    if handler?
+      $key = "^xmlxr:#{type}"
+      handler { $key, type, value, idx, ρ: registers, ref, }
+    else
+      lexer.emit 'data', { type, value, }
 
   lexer.stateMachine =
 
     #-------------------------------------------------------------------------------------------------------
-    [State.data]:
+    [state_data]:
       #.....................................................................................................
-      [Action.lt]: ( src, idx, chr ) =>
+      action_lt: ( src, idx, chr ) =>
         if ρ.data.trim().length > 0
-          emit '^1^', src, idx, Type.text, ρ.data
-        ρ.tag_name    = ''
+          emit '^1^', src, idx, type_text, ρ.data
+        ρ.tagname    = ''
         ρ.is_closing  = false
-        ρ.state       = State.tagBegin
+        ρ.state       = state_tag_begin
       #.....................................................................................................
-      [Action.chr]: ( ( src, idx, chr ) => ρ.data += chr )
+      action_chr: ( ( src, idx, chr ) => ρ.data += chr )
 
     #-------------------------------------------------------------------------------------------------------
-    [State.cdata]:
+    [state_cdata]:
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
+      action_chr: ( src, idx, chr ) =>
         ρ.data += chr
         if ( ( ρ.data.substr -3 ) is ']]>' )
-          emit '^2^', src, idx, Type.text, ρ.data.slice 0, -3
+          emit '^2^', src, idx, type_text, ρ.data.slice 0, -3
           ρ.data  = ''
-          ρ.state = State.data
+          ρ.state = state_data
+        return null
 
     #-------------------------------------------------------------------------------------------------------
-    [State.tagBegin]:
+    [state_tag_begin]:
       #.....................................................................................................
-      [Action.space]: ( ( src, idx, chr ) => emit '^3^', src, idx, Type.noop, chr )
+      action_space: ( ( src, idx, chr ) => emit '^3^', src, idx, type_noop, chr )
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.tag_name = chr
-        ρ.state   = State.tag_name
+      action_chr: ( src, idx, chr ) =>
+        ρ.tagname = chr
+        ρ.state   = state_tagname
       #.....................................................................................................
-      [Action.slash]: ( src, idx, chr ) =>
-        ρ.tag_name   = ''
+      action_slash: ( src, idx, chr ) =>
+        ρ.tagname   = ''
         ρ.is_closing = true
 
     #-------------------------------------------------------------------------------------------------------
-    [State.tag_name]:
+    [state_tagname]:
       #.....................................................................................................
-      [Action.space]: ( src, idx, chr ) =>
+      action_space: ( src, idx, chr ) =>
         if ρ.is_closing
-          ρ.state = State.tagEnd
+          ρ.state = state_tag_end
         else
-          ρ.state = State.atr_name_start
-          emit '^4^', src, idx, Type.openTag, ρ.tag_name
+          ρ.state = state_atrname_start
+          emit '^4^', src, idx, type_open, ρ.tagname
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
+      action_gt: ( src, idx, chr ) =>
         if ρ.is_closing
-          emit '^5^', src, idx, Type.closeTag, ρ.tag_name
+          emit '^5^', src, idx, type_close, ρ.tagname
         else
-          emit '^6^', src, idx, Type.openTag, ρ.tag_name
+          emit '^6^', src, idx, type_open, ρ.tagname
         ρ.data  = '';
-        ρ.state = State.data;
+        ρ.state = state_data;
       #.....................................................................................................
-      [Action.slash]: ( src, idx, chr ) =>
-        ρ.state = State.tagEnd
-        emit '^7^', src, idx, Type.openTag, ρ.tag_name
+      action_slash: ( src, idx, chr ) =>
+        ρ.state = state_tag_end
+        emit '^7^', src, idx, type_open, ρ.tagname
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.tag_name += chr
-        if ρ.tag_name is '![CDATA['
-          ρ.state   = State.cdata
+      action_chr: ( src, idx, chr ) =>
+        ρ.tagname += chr
+        if ρ.tagname is '![CDATA['
+          ρ.state   = state_cdata
           ρ.data    = ''
-          ρ.tag_name = ''
+          ρ.tagname = ''
 
     #-------------------------------------------------------------------------------------------------------
-    [State.tagEnd]:
+    [state_tag_end]:
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
-        emit '^8^', src, idx, Type.closeTag, ρ.tag_name
+      action_gt: ( src, idx, chr ) =>
+        emit '^8^', src, idx, type_close, ρ.tagname
         ρ.data  = ''
-        ρ.state = State.data
+        ρ.state = state_data
       #.....................................................................................................
-      [Action.chr]: ( ( src, idx, chr ) => emit '^9^', src, idx, Type.noop, chr )
+      action_chr: ( ( src, idx, chr ) => emit '^9^', src, idx, type_noop, chr )
 
     #-------------------------------------------------------------------------------------------------------
-    [State.atr_name_start]:
+    [state_atrname_start]:
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.attr_name  = chr
-        ρ.state     = State.atr_name
+      action_chr: ( src, idx, chr ) =>
+        ρ.atrname  = chr
+        ρ.state     = state_atrname
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
+      action_gt: ( src, idx, chr ) =>
         ρ.data = ''
-        ρ.state = State.data
+        ρ.state = state_data
       #.....................................................................................................
-      [Action.space]: ( ( src, idx, chr ) => emit '^10^', src, idx, Type.noop, chr )
+      action_space: ( ( src, idx, chr ) => emit '^10^', src, idx, type_noop, chr )
       #.....................................................................................................
-      [Action.slash]: ( src, idx, chr ) =>
+      action_slash: ( src, idx, chr ) =>
         ρ.is_closing = true
-        ρ.state     = State.tagEnd
+        ρ.state     = state_tag_end
 
     #-------------------------------------------------------------------------------------------------------
-    [State.atr_name]:
+    [state_atrname]:
       #.....................................................................................................
-      [Action.space]: ( src, idx, chr ) =>
-        ρ.state = State.atr_name_end
+      action_space: ( src, idx, chr ) =>
+        ρ.state = state_atrname_end
       #.....................................................................................................
-      [Action.equal]: ( src, idx, chr ) =>
-        emit '^11^', src, idx, Type.atr_name, ρ.attr_name
-        ρ.state = State.atr_value_begin
+      action_equal: ( src, idx, chr ) =>
+        emit '^11^', src, idx, type_atrname, ρ.atrname
+        ρ.state = state_atrvalue_begin
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
-        ρ.atr_value = ''
-        emit '^12^', src, idx, Type.atr_name, ρ.attr_name
-        emit '^13^', src, idx, Type.atr_value, ρ.atr_value
+      action_gt: ( src, idx, chr ) =>
+        ρ.atrvalue = ''
+        emit '^12^', src, idx, type_atrname, ρ.atrname
+        emit '^13^', src, idx, type_atrvalue, ρ.atrvalue
         ρ.data      = ''
-        ρ.state     = State.data
+        ρ.state     = state_data
       #.....................................................................................................
-      [Action.slash]: ( src, idx, chr ) =>
+      action_slash: ( src, idx, chr ) =>
         ρ.is_closing = true
-        ρ.atr_value = ''
-        emit '^14^', src, idx, Type.atr_name, ρ.attr_name
-        emit '^15^', src, idx, Type.atr_value, ρ.atr_value
-        ρ.state = State.tagEnd
+        ρ.atrvalue = ''
+        emit '^14^', src, idx, type_atrname, ρ.atrname
+        emit '^15^', src, idx, type_atrvalue, ρ.atrvalue
+        ρ.state = state_tag_end
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.attr_name += chr
+      action_chr: ( src, idx, chr ) =>
+        ρ.atrname += chr
 
     #-------------------------------------------------------------------------------------------------------
-    [State.atr_name_end]:
+    [state_atrname_end]:
       #.....................................................................................................
-      [Action.space]: ( ( src, idx, chr ) => emit '^16^', src, idx, Type.noop, chr )
+      action_space: ( ( src, idx, chr ) => emit '^16^', src, idx, type_noop, chr )
       #.....................................................................................................
-      [Action.equal]: ( src, idx, chr ) =>
-        emit '^17^', src, idx, Type.atr_name, ρ.attr_name
-        ρ.state = State.atr_value_begin
+      action_equal: ( src, idx, chr ) =>
+        emit '^17^', src, idx, type_atrname, ρ.atrname
+        ρ.state = state_atrvalue_begin
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
-        ρ.atr_value = ''
-        emit '^18^', src, idx, Type.atr_name, ρ.attr_name
-        emit '^19^', src, idx, Type.atr_value, ρ.atr_value
+      action_gt: ( src, idx, chr ) =>
+        ρ.atrvalue = ''
+        emit '^18^', src, idx, type_atrname, ρ.atrname
+        emit '^19^', src, idx, type_atrvalue, ρ.atrvalue
         ρ.data      = ''
-        ρ.state     = State.data
+        ρ.state     = state_data
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.atr_value = ''
-        emit '^20^', src, idx, Type.atr_name, ρ.attr_name
-        emit '^21^', src, idx, Type.atr_value, ρ.atr_value
-        ρ.attr_name  = chr
-        ρ.state     = State.atr_name
+      action_chr: ( src, idx, chr ) =>
+        ρ.atrvalue = ''
+        emit '^20^', src, idx, type_atrname, ρ.atrname
+        emit '^21^', src, idx, type_atrvalue, ρ.atrvalue
+        ρ.atrname  = chr
+        ρ.state     = state_atrname
 
     #-------------------------------------------------------------------------------------------------------
-    [State.atr_value_begin]:
+    [state_atrvalue_begin]:
       #.....................................................................................................
-      [Action.space]: ( ( src, idx, chr ) => emit '^22^', src, idx, Type.noop, chr )
+      action_space: ( ( src, idx, chr ) => emit '^22^', src, idx, type_noop, chr )
       #.....................................................................................................
-      [Action.quote]: ( src, idx, chr ) =>
+      action_quote: ( src, idx, chr ) =>
         ρ.prv_quote  = chr
-        ρ.atr_value     = ''
-        ρ.state         = State.atr_value
+        ρ.atrvalue     = ''
+        ρ.state         = state_atrvalue
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
-        ρ.atr_value     = ''
-        emit '^23^', src, idx, Type.atr_value, ρ.atr_value
+      action_gt: ( src, idx, chr ) =>
+        ρ.atrvalue     = ''
+        emit '^23^', src, idx, type_atrvalue, ρ.atrvalue
         ρ.data          = ''
-        ρ.state         = State.data
+        ρ.state         = state_data
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
+      action_chr: ( src, idx, chr ) =>
         ρ.prv_quote  = ''
-        ρ.atr_value     = chr
-        ρ.state         = State.atr_value
+        ρ.atrvalue     = chr
+        ρ.state         = state_atrvalue
 
     #-------------------------------------------------------------------------------------------------------
-    [State.atr_value]:
+    [state_atrvalue]:
       #.....................................................................................................
-      [Action.space]: ( src, idx, chr ) =>
+      action_space: ( src, idx, chr ) =>
         if ρ.prv_quote.length > 0
-          ρ.atr_value += chr
+          ρ.atrvalue += chr
         else
-          emit '^24^', src, idx, Type.atr_value, ρ.atr_value
-          ρ.state = State.atr_name_start
+          emit '^24^', src, idx, type_atrvalue, ρ.atrvalue
+          ρ.state = state_atrname_start
       #.....................................................................................................
-      [Action.quote]: ( src, idx, chr ) =>
+      action_quote: ( src, idx, chr ) =>
         if chr is ρ.prv_quote
-          emit '^25^', src, idx, Type.atr_value, ρ.atr_value
-          ρ.state = State.atr_name_start
+          emit '^25^', src, idx, type_atrvalue, ρ.atrvalue
+          ρ.state = state_atrname_start
         else
-          ρ.atr_value += chr
+          ρ.atrvalue += chr
       #.....................................................................................................
-      [Action.gt]: ( src, idx, chr ) =>
+      action_gt: ( src, idx, chr ) =>
         if ρ.prv_quote.length > 0
-          ρ.atr_value += chr
+          ρ.atrvalue += chr
         else
-          emit '^26^', src, idx, Type.atr_value, ρ.atr_value
+          emit '^26^', src, idx, type_atrvalue, ρ.atrvalue
           ρ.data  = ''
-          ρ.state = State.data
+          ρ.state = state_data
       #.....................................................................................................
-      [Action.slash]: ( src, idx, chr ) =>
+      action_slash: ( src, idx, chr ) =>
         if ρ.prv_quote.length > 0
-          ρ.atr_value += chr
+          ρ.atrvalue += chr
         else
-          emit '^27^', src, idx, Type.atr_value, ρ.atr_value
+          emit '^27^', src, idx, type_atrvalue, ρ.atrvalue
           ρ.is_closing = true
-          ρ.state     = State.tagEnd
+          ρ.state     = state_tag_end
       #.....................................................................................................
-      [Action.chr]: ( src, idx, chr ) =>
-        ρ.atr_value += chr
+      action_chr: ( src, idx, chr ) =>
+        ρ.atrvalue += chr
 
   #---------------------------------------------------------------------------------------------------------
   return lexer
 
 
-module.exports = { State, Action, Type, create, }
+module.exports = {
+  state_data
+  state_cdata
+  state_tag_begin
+  state_tagname
+  state_tag_end
+  state_atrname_start
+  state_atrname
+  state_atrname_end
+  state_atrvalue_begin
+  state_atrvalue
+  action_lt
+  action_gt
+  action_space
+  action_equal
+  action_quote
+  action_slash
+  action_chr
+  action_error
+  type_text
+  type_open
+  type_close
+  type_atrname
+  type_atrvalue
+  type_noop
+  create }
 
 
 
