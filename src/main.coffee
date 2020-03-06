@@ -130,7 +130,8 @@ create = ( settings, handler ) ->
       handler new_datom '^raw', { name, text, stop, txtl, tagl, tagr, atrl, has_slash, $: ref, }
     else
       return null if name is 'openfinish'
-      return null if name is 'extraneous'
+      # return null if name is 'extraneous'
+      # return null if name is 'missingbracket'
       type  = name
       value = text
       lexer.emit 'data', { type, value, }
