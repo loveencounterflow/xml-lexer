@@ -73,7 +73,7 @@ test.cb('slash breaking attribute', t => {
         {type: Lexer.name_open, value: 'test'},
         {type: Lexer.name_atrname, value: 'foo'},
         {type: Lexer.name_atrvalue, value: ''},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -141,7 +141,7 @@ test.cb('self closing tag', t => {
     const xml = `<test/>`;
     const expected = [
         {type: Lexer.name_open, value: 'test'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -153,7 +153,7 @@ test.cb('self closing tag with slash after attribute value', t => {
         {type: Lexer.name_open, value: 'test'},
         {type: Lexer.name_atrname, value: 'a'},
         {type: Lexer.name_atrvalue, value: '1'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -167,7 +167,7 @@ test.cb('slashes in attribute values', t => {
         {type: Lexer.name_atrvalue, value: '/'},
         {type: Lexer.name_atrname, value: 'b'},
         {type: Lexer.name_atrvalue, value: '/'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -181,7 +181,7 @@ test.cb('quotes inside quotes', t => {
         {type: Lexer.name_atrvalue, value: '"'},
         {type: Lexer.name_atrname, value: 'b'},
         {type: Lexer.name_atrvalue, value: "'"},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -195,7 +195,7 @@ test.cb('gt in attribute values', t => {
         {type: Lexer.name_atrvalue, value: '>'},
         {type: Lexer.name_atrname, value: 'b'},
         {type: Lexer.name_atrvalue, value: '>'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -209,7 +209,7 @@ test.cb('lt in attribute values', t => {
         {type: Lexer.name_atrvalue, value: '<'},
         {type: Lexer.name_atrname, value: 'b'},
         {type: Lexer.name_atrvalue, value: '<'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -218,18 +218,26 @@ test.cb('attributes are ignored after slash in self closing tag', t => {
     const lexer = Lexer.create();
     const xml = `<test/ a=0>`;
     const expected = [
-        {type: Lexer.name_open, value: 'test'},
-        {type: Lexer.name_close, value: 'test'},
+			{ type: Lexer.name_open,      	value: "test"	},
+			{ type: Lexer.name_extraneous,	value: " "   	},
+			{ type: Lexer.name_extraneous,	value: "a"   	},
+			{ type: Lexer.name_extraneous,	value: "="   	},
+			{ type: Lexer.name_extraneous,	value: "0"   	},
+			{ type: Lexer.name_solitary,  	value: "test"	},
     ];
     assert(t, lexer, xml, expected);
 });
+
 
 test.cb('attributes are ignored in closing tag', t => {
     const lexer = Lexer.create();
     const xml = `<test></test a=0>`;
     const expected = [
-        {type: Lexer.name_open, value: 'test'},
-        {type: Lexer.name_close, value: 'test'},
+			{ type: Lexer.name_open,      	value: "test"	},
+			{ type: Lexer.name_extraneous,	value: "a"   	},
+			{ type: Lexer.name_extraneous,	value: "="   	},
+			{ type: Lexer.name_extraneous,	value: "0"   	},
+			{ type: Lexer.name_close,     	value: "test"	},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -239,7 +247,7 @@ test.cb('ignore tags starting with ?', t => {
     const xml = `<?xml foo=bar><test/>`;
     const expected = [
         {type: Lexer.name_open, value: 'test'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
@@ -271,7 +279,7 @@ test.cb('ignore DOCTYPE', t => {
     const xml = `<!DOCTYPE foo><test/>`;
     const expected = [
         {type: Lexer.name_open, value: 'test'},
-        {type: Lexer.name_close, value: 'test'},
+        {type: Lexer.name_solitary, value: 'test'},
     ];
     assert(t, lexer, xml, expected);
 });
