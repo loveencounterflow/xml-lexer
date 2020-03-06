@@ -5,7 +5,10 @@ const Lexer = require('../lib/main.js');
 
 const assert = (t, lexer, xml, expected) => {
     let idx = 0;
+    console.log( '^098^', '—————————————————————————————————————' );
+    console.log( '^098^', JSON.stringify( xml ) );
     lexer.on('data', d => {
+    		console.log( '^098^', JSON.stringify( d ) );
         t.deepEqual(d, expected[idx], JSON.stringify(d));
         if (++idx >= expected.length) t.end();
     });
