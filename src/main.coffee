@@ -228,7 +228,6 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       action_gt: ( src, idx, chr ) =>
         emit '^d18^', src, idx, name_info, chr
-        console.log '^37376^', idx, chr, src[ idx - 5 .. idx + 5 ], ρ.is_closing, ρ.has_slash
         if ρ.has_slash
           ρ.has_slash = false
           emit '^d19^', src, idx, name_solitary, ρ.tagname
@@ -267,8 +266,9 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       action_slash: ( src, idx, chr ) =>
         emit '^d30^', src, idx, name_info, chr
-        ρ.is_closing = true
-        ρ.state     = state_tag_end
+        ρ.has_slash   = true
+        ρ.is_closing  = true
+        ρ.state       = state_tag_end
 
     #-------------------------------------------------------------------------------------------------------
     state_atrname:
@@ -293,8 +293,9 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       action_slash: ( src, idx, chr ) =>
         emit '^d38^', src, idx, name_info, chr
-        ρ.is_closing = true
-        ρ.atrvalue = ''
+        ρ.has_slash   = true
+        ρ.is_closing  = true
+        ρ.atrvalue    = ''
         emit '^d39^', src, idx, name_atrname, ρ.atrname
         emit '^d40^', src, idx, name_atrvalue, ρ.atrvalue
         ρ.state = state_tag_end
@@ -430,6 +431,9 @@ module.exports = {
   name_atrname
   name_atrvalue
   name_noop
+  name_solitary
+  name_extraneous
+  name_missingbracket
   create }
 
 
