@@ -284,10 +284,10 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       action_gt: ( src, idx, chr ) =>
         emit '^d34^', src, idx, name_info, chr
-        emit '^d35^', src, idx, name_openfinish, ρ.tagname
         ρ.atrvalue = ''
         emit '^d36^', src, idx, name_atrname, ρ.atrname
         emit '^d37^', src, idx, name_atrvalue, ρ.atrvalue
+        emit '^d35^', src, idx, name_openfinish, ρ.tagname
         ρ.data      = ''
         ρ.state     = state_data
       #.....................................................................................................
@@ -318,11 +318,11 @@ create = ( settings, handler ) ->
       #.....................................................................................................
       action_gt: ( src, idx, chr ) =>
         emit '^d46^', src, idx, name_info, chr
-        emit '^d47^', src, idx, name_openfinish, ρ.tagname
-        ρ.atrvalue = ''
+        ρ.atrvalue  = ''
+        ρ.data      = ''
         emit '^d48^', src, idx, name_atrname, ρ.atrname
         emit '^d49^', src, idx, name_atrvalue, ρ.atrvalue
-        ρ.data      = ''
+        emit '^d47^', src, idx, name_openfinish, ρ.tagname
         ρ.state     = state_data
       #.....................................................................................................
       action_chr: ( src, idx, chr ) =>
