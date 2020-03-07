@@ -115,9 +115,12 @@ create = ( settings, handler ) ->
     tagr:           null # last index of current or most recent tag
     atrl:           null # first index of either atrname or atrvalue
     decl_syntax:    false # true if tag opened with `<?`
+    src:            null
+    max_idx:        null
+
 
   #---------------------------------------------------------------------------------------------------------
-  step = ( src, idx, chr ) =>
+  step = ( idx, chr ) =>
     if settings.debug then console.log ρ.state, chr
     actions = lexer.stateMachine[ ρ.state ]
     action  = actions[ actions_by_chrs[ chr ] ? action_chr ] ? actions[ action_error ] ? actions[ action_chr ]
@@ -126,29 +129,28 @@ create = ( settings, handler ) ->
 
   #---------------------------------------------------------------------------------------------------------
   lexer.write = ( src ) =>
+    ρ.max_idx = 0
+    ρ.src     = src
     for idx in [ 0 ... src.length ]
-      step src, idx, src[ idx ]
+      step idx, src[ idx ]
     return null
 
   #---------------------------------------------------------------------------------------------------------
   lexer.flush = =>
+    debug '^4445^', ρ.max_idx, ρ.src.length
+    debug '^4445^', ρ.max_idx < ρ.src.length - 1
+    ρ.src
 
   #---------------------------------------------------------------------------------------------------------
   emit = ( ref, idx, name, text ) =>
     # sigil = null
     # # tags like: '?xml', '!DOCTYPE', comments
+    ρ.max_idx = idx unless name in [ name_noop, name_info, ]
     return null if ( name is name_noop ) and ( not settings.emit_noop )
     return null if ( name is name_info ) and ( not settings.emit_info )
     unless settings.include_specials
       return null if ρ.tagname[ 0 ] in '!?'
       return null if name is name_noop
-    # switch sigil = ρ.tagname[ 0 ]
-    #   when '?' then name = ''
-    #   when '!' then name = 'declaration'
-    # event.sigil = sigil if sigil?
-    registers = {}
-    for k, v of ρ
-      registers[ k ] = v unless v in [ undefined, '', false, ]
     if handler?
       { txtl, tagl, tagr, atrl, has_slash, } = ρ
       stop                        = idx
