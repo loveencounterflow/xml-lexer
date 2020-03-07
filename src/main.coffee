@@ -28,7 +28,6 @@ DATOM                     = new ( require 'datom' ).Datom { dirty: false, }
   select }                = DATOM.export()
 
 
-EventEmitter = require('eventemitter3')
 { isa
   validate
   type_of }               = ( new ( require 'intertype' ).Intertype() ).export()
@@ -96,7 +95,7 @@ create = ( settings, handler ) ->
     emit_info:          false
     emit_noop:          false
   settings          = { defaults..., settings..., }
-  lexer             = new EventEmitter()
+  lexer             = {}
 
   #---------------------------------------------------------------------------------------------------------
   # Registers
@@ -151,17 +150,9 @@ create = ( settings, handler ) ->
     unless settings.include_specials
       return null if ρ.tagname[ 0 ] in '!?'
       return null if name is name_noop
-    if handler?
-      { txtl, tagl, tagr, atrl, has_slash, } = ρ
-      stop                        = idx
-      handler new_datom '^raw', { name, text, stop, txtl, tagl, tagr, atrl, has_slash, $: ref, }
-    else
-      return null if name is 'openfinish'
-      # return null if name is 'extraneous'
-      # return null if name is 'missingbracket'
-      type  = name
-      value = text
-      lexer.emit 'data', { type, value, }
+    { txtl, tagl, tagr, atrl, has_slash, } = ρ
+    stop                        = idx
+    handler new_datom '^raw', { name, text, stop, txtl, tagl, tagr, atrl, has_slash, $: ref, }
     return null
 
   lexer.stateMachine =
