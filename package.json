@@ -23,10 +23,8 @@
   "author": "Pedro Ladaria <pedro.ladaria@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "ava": "^3.4.0",
     "cnd": "^5.3.0",
     "datom": "^3.0.1",
-    "eventemitter3": "^4.0.0",
     "intertype": "^3.1.2"
   },
   "devDependencies": {},
